@@ -71,7 +71,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         mat1 = inputFrame.rgba();
         Core.rotate(mat1, mat2, Core.ROTATE_90_CLOCKWISE);
-        Imgproc.Canny(mat2, mat3, 80, 350);
+        Imgproc.Canny(mat2, mat3, 175, 400);
+        Imgproc.dilate(mat3, mat3, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(6, 6)));
         return mat3;
     }
 

@@ -2,17 +2,20 @@ package com.example.edgerec;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.webkit.WebView;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCamera2View;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -26,9 +29,11 @@ import org.opencv.dnn.Dnn;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_SIMPLE;
+import static org.opencv.imgproc.Imgproc.RETR_EXTERNAL;
 import static org.opencv.imgproc.Imgproc.RETR_TREE;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2{
@@ -41,12 +46,19 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private Mat mGray;
     Mat hierarchy;
     List<MatOfPoint> contours;
+    WebView babylonView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
+
+        babylonView = findViewById(R.id.babylon);
+        babylonView.getSettings().setJavaScriptEnabled(true);
+        babylonView.getSettings().setAllowUniversalAccessFromFileURLs(true);
+        babylonView.setBackgroundColor(Color.TRANSPARENT);
 
         baseLoaderCallback = new BaseLoaderCallback(this) {
             @Override
@@ -96,12 +108,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         hierarchy = new Mat();
 
         Core.rotate(mRgba, mRgba, Core.ROTATE_90_CLOCKWISE);
-        Imgproc.Canny(mRgba, mIntermediateMat, 80, 100);
-        Imgproc.findContours(mIntermediateMat, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0, 0));
+        Imgproc.Canny(mRgba, mIntermediateMat, 70, 100);
+
+        Imgproc.dilate(mIntermediateMat, mIntermediateMat, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(9, 9)));
+        Imgproc.findContours(mIntermediateMat, contours, hierarchy, RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0, 0));
         hierarchy.release();
         Imgproc.cvtColor(mIntermediateMat, mIntermediateMat, Imgproc.COLOR_GRAY2RGBA, 3);
-        Imgproc.drawContours(mIntermediateMat, contours, -1, new Scalar(0,128,0));
-        //approximateShapes();
+        //Imgproc.drawContours(mIntermediateMat, contours, -1, new Scalar(0,128,0));
+        approximateShapesAndDrawContours();
         return mIntermediateMat;
     }
 
@@ -126,17 +140,55 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
 
-    void approximateShapes(){
+
+
+    void approximateShapesAndDrawContours(){
         for(MatOfPoint contour:contours){
+
             MatOfPoint2f thisContour2f = new MatOfPoint2f();
             MatOfPoint approxContour = new MatOfPoint();
             MatOfPoint2f approxContour2f = new MatOfPoint2f();
 
             contour.convertTo(thisContour2f, CvType.CV_32FC2);
-            Imgproc.approxPolyDP(thisContour2f, approxContour2f, 2, true);
             approxContour2f.convertTo(approxContour, CvType.CV_32S);
+
+            /*if (Math.abs(Imgproc.contourArea(contour))<100 || !Imgproc.isContourConvex(contour)){
+
+            }
+            else {
+
+            }*/
+            Imgproc.approxPolyDP(thisContour2f, approxContour2f, Imgproc.arcLength(thisContour2f, true) * 0.02, true);
+            Log.d(TAG,approxContour2f.total()+"-");
+
+//            double shapeFactor = 4*Math.PI*Imgproc.contourArea(contour)/(Imgproc.arcLength(thisContour2f,true)*Imgproc.arcLength(thisContour2f,true));
+//            Log.d(TAG,"shapeFactor - "+shapeFactor);
+
+            /*if (contour.size().area()>200){
+                if (approxContour2f.total()==4){
+                    Imgproc.drawContours(mIntermediateMat, Collections.singletonList(contour), -1, new Scalar(0,128,0));
+                    *//*Point points[] = contour.toArray();
+                    Imgproc.line(mIntermediateMat,points[0],points[1],new Scalar(0,128,0),5);
+                    Imgproc.line(mIntermediateMat,points[1],points[2],new Scalar(0,128,0),5);
+                    Imgproc.line(mIntermediateMat,points[2],points[3],new Scalar(0,128,0),5);
+                    Imgproc.line(mIntermediateMat,points[3],points[0],new Scalar(0,128,0),5);*//*
+                }
+            }*/
+            if (approxContour2f.total()==4){
+                //Imgproc.drawContours(mIntermediateMat, Collections.singletonList(contour), -1, new Scalar(0,128,0));
+                    Point points[] = contour.toArray();
+                    Imgproc.line(mIntermediateMat,points[0],points[1],new Scalar(255,0,0),6);
+                    Imgproc.line(mIntermediateMat,points[1],points[2],new Scalar(255,0,0),6);
+                    Imgproc.line(mIntermediateMat,points[2],points[3],new Scalar(255,0,0),6);
+                    Imgproc.line(mIntermediateMat,points[3],points[0],new Scalar(255,0,0),6);
+            }
+
+
+
+            
 
         }
     }
+
 
 }
